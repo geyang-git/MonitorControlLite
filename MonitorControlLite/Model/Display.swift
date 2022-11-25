@@ -3,6 +3,7 @@
 import Cocoa
 import Foundation
 import os.log
+import HAP
 
 class Display: Equatable {
   let identifier: CGDirectDisplayID
@@ -15,6 +16,7 @@ class Display: Equatable {
   var smoothBrightnessRunning: Bool = false
   var smoothBrightnessSlow: Bool = false
   let swBrightnessSemaphore = DispatchSemaphore(value: 1)
+  var accessory: Accessory.Lightbulb?
 
   static func == (lhs: Display, rhs: Display) -> Bool {
     return lhs.identifier == rhs.identifier
@@ -104,16 +106,16 @@ class Display: Equatable {
     }
   }
 
-  func setBrightness(_ to: Float = -1, slow: Bool = false) -> Bool {
+  func setBrightness(_ to: Float = -1, slow: Bool = false, isHAP: Bool = false) -> Bool {
     self.checkGammaInterference()
     if !prefs.bool(forKey: PrefKey.disableSmoothBrightness.rawValue) {
-      return self.setSmoothBrightness(to, slow: slow)
+      return self.setSmoothBrightness(to, slow: slow, isHAP: isHAP)
     } else {
-      return self.setDirectBrightness(to)
+      return self.setDirectBrightness(to, isHAP: isHAP)
     }
   }
 
-  func setSmoothBrightness(_ to: Float = -1, slow: Bool = false) -> Bool {
+  func setSmoothBrightness(_ to: Float = -1, slow: Bool = false, isHAP: Bool = false) -> Bool {
     guard app.sleepID == 0, app.reconfigureID == 0 else {
       self.savePref(self.smoothBrightnessTransient, for: .brightness)
       self.smoothBrightnessRunning = false
@@ -150,7 +152,7 @@ class Display: Equatable {
       } else {
         self.smoothBrightnessTransient += min((brightness - self.smoothBrightnessTransient) / stepDivider, 1 / 100)
       }
-      _ = self.setDirectBrightness(self.smoothBrightnessTransient, transient: true)
+      _ = self.setDirectBrightness(self.smoothBrightnessTransient, transient: true, isHAP: isHAP)
       if !dontPushAgain {
         self.smoothBrightnessRunning = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
@@ -159,14 +161,19 @@ class Display: Equatable {
       }
     } else {
       os_log("No more need to push brightness for Display  %{public}@ (setting one final time)", type: .info, String(self.identifier))
-      _ = self.setDirectBrightness(self.smoothBrightnessTransient, transient: true)
+      _ = self.setDirectBrightness(self.smoothBrightnessTransient, transient: true, isHAP: isHAP)
       self.smoothBrightnessRunning = false
     }
     self.swBrightnessSemaphore.signal()
     return true
   }
 
-  func setDirectBrightness(_ to: Float, transient: Bool = false) -> Bool {
+  func setDirectBrightness(_ to: Float, transient: Bool = false, isHAP: Bool = false) -> Bool {
+    if(!isHAP){
+      // 转换为0-100 int
+      let value100 = Int(round(to * 100))
+      self.accessory?.lightbulb.brightness?.value = value100
+    }
     let value = max(min(to, 1), 0)
     if self.setSwBrightness(value) {
       if !transient {
@@ -177,6 +184,11 @@ class Display: Equatable {
       return true
     }
     return false
+  }
+
+  // 绑定 Accessory
+  func bindAccessory(_ accessory: Accessory.Lightbulb) {
+    self.accessory = accessory
   }
 
   func getBrightness() -> Float {

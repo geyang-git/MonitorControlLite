@@ -3,6 +3,7 @@
 import Cocoa
 import CoreGraphics
 import os.log
+import HAP
 
 class DisplayManager {
   public static let shared = DisplayManager()
@@ -159,6 +160,7 @@ class DisplayManager {
 
   func configureDisplays() {
     self.clearDisplays()
+    delegate.injectDisplayManager(displayManager: self)
     var onlineDisplayIDs = [CGDirectDisplayID](repeating: 0, count: 16)
     var displayCount: UInt32 = 0
     guard CGGetOnlineDisplayList(16, &onlineDisplayIDs, &displayCount) == .success else {
@@ -221,7 +223,18 @@ class DisplayManager {
   }
 
   func addDisplay(display: Display) {
+    // 检查是否在列表中
+    if !self.displays.contains(where: { $0.identifier == display.identifier }) {
+      let livingRoomLightbulb = Accessory.Lightbulb(info: Service.Info(name: display.name, serialNumber: String(display.identifier)),isDimmable:true)
+      device.addAccessories([livingRoomLightbulb])
+      display.bindAccessory(livingRoomLightbulb)
+    }
     self.displays.append(display)
+  }
+
+  // 根据id获取display
+  func getByDisplayID(displayID: CGDirectDisplayID) -> Display? {
+      return self.displays.first { $0.identifier == displayID }
   }
 
   func clearDisplays() {
