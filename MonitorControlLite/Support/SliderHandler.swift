@@ -277,6 +277,9 @@ class SliderHandler {
   func valueChangedOtherDisplay(otherDisplay: Display, value: Float) {
     if self.command == Command.brightness {
       _ = otherDisplay.setBrightness(value)
+        // 转换为0-100 int
+      let value100 = Int(round(value * 100))
+      otherDisplay.accessory?.lightbulb.brightness?.value = value100
       return
     } else if !otherDisplay.isSw() {}
   }

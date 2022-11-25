@@ -5,11 +5,11 @@ class LoggingDeviceDelegate: DeviceDelegate {
     var logger: Logger
     // DisplayManager
     var displayManager: DisplayManager?
-  
+
     init(logger: Logger) {
         self.logger = logger
     }
-  
+
     // 注入DisplayManager
     func injectDisplayManager(displayManager: DisplayManager) {
         self.displayManager = displayManager
@@ -43,14 +43,15 @@ class LoggingDeviceDelegate: DeviceDelegate {
                 // newValue 转为0-1的浮点数
                 let brightness = newValue as! Int
                 let to = Float(brightness) / 100
-                display?.setBrightness(to,isHAP: true)
+                display?.setBrightness(to,slow:true,isHAP: true)
             }
             // 如果是开关
             if characteristic.type == .powerState {
                 // 设置开关
-//                display.setPowerState(display: display!, powerState: newValue as! Bool)
+              let powerState = newValue as! Bool
+              display?.setBrightness(powerState ? 1 : 0, slow: true, isHAP: true)
             }
-        }
+      }
     }
 
     func characteristicListenerDidSubscribe(_ accessory: Accessory,

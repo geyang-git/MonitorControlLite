@@ -169,11 +169,6 @@ class Display: Equatable {
   }
 
   func setDirectBrightness(_ to: Float, transient: Bool = false, isHAP: Bool = false) -> Bool {
-    if(!isHAP){
-      // 转换为0-100 int
-      let value100 = Int(round(to * 100))
-      self.accessory?.lightbulb.brightness?.value = value100
-    }
     let value = max(min(to, 1), 0)
     if self.setSwBrightness(value) {
       if !transient {
